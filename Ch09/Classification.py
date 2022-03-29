@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -58,6 +59,15 @@ eeg.keys()
 # ### Visually inspect
 
 # %%
+#eeg2 = pd.DataFrame(eeg)
+
+# %%
+eeg
+
+# %%
+eeg2.head()
+
+# %%
 plt.subplot(3, 1, 1)
 plt.plot(eeg["measurements"][0])
 plt.legend(eeg['classes'][0])
@@ -90,20 +100,30 @@ eeg['measurements'][0].shape
 # ## Generate the features
 
 # %%
-# from cesium import featurize as ft
-# features_to_use = ["amplitude",
-#                    "percent_beyond_1_std",
-#                    "percent_close_to_median",
-#                   "skew",
-#                   "max_slope"]
-# fset_cesium = ft.featurize_time_series(times=eeg["times"],
-#                                               values=eeg["measurements"],
-#                                               errors=None,
-#                                               features_to_use=features_to_use,
-#                                              scheduler = None)
+import os
+os.getcwd()
 
 # %%
-fset_cesium = pd.read_csv("data/full_eeg_data_features.csv", header = [0, 1])
+from cesium import featurize as ft
+features_to_use = ["amplitude",
+                   "percent_beyond_1_std",
+                   "percent_close_to_median",
+                  "skew",
+                  "max_slope"]
+fset_cesium = ft.featurize_time_series(times=eeg["times"],
+                                              values=eeg["measurements"],
+                                              errors=None,
+                                              features_to_use=features_to_use,
+                                             scheduler = None)
+
+# %%
+fset_cesium.head()
+
+# %%
+fset_cesium.to_csv('../data/full_eeg_data_features.csv')
+
+# %%
+pd.read_csv("../data/full_eeg_data_features.csv", header = [0, 1], index_col=0)
 
 # %%
 fset_cesium.head()
@@ -182,6 +202,9 @@ fset_cesium['max_slope'].hist(by=fset_cesium['classes'])
 # ## Prepare data for training
 
 # %%
+fset_cesium = fset_cesium.reset_index()
+
+# %%
 X_train, X_test, y_train, y_test = train_test_split(
      fset_cesium.iloc[:, 1:6].values, eeg["classes"], random_state=21)
 
@@ -219,6 +242,12 @@ y_train.shape
 # %%
 model = xgb.XGBClassifier(n_estimators=10, max_depth=3,
                               random_state=21)
+# [21:29:05] WARNING: ../src/learner.cc:1115: Starting in XGBoost 1.3.0, the default evaluation metric used with the objective 'multi:softprob' was changed from 'merror' to 'mlogloss'. Explicitly set eval_metric if you'd like to restore the old behavior.
+# 
+
+# %%
+model = xgb.XGBClassifier(n_estimators=10, max_depth=3,
+                              random_state=21, eval_metric = 'merror')
 model.fit(X_train, y_train)
 
 # %%
@@ -234,13 +263,26 @@ xgb.plot_importance(model)
 # ## Time Series Forecasting with Decision Trees
 
 # %%
-ap = pd.read_csv("data/AirPassengers.csv", parse_dates=[0])
+ap = pd.read_csv("../data/AirPassengers.csv", parse_dates=[1])
+
+# %%
 
 # %%
 ap.head()
 
 # %%
+ap.dtypes
+
+# %%
+ap['Month'] = ap['date'].dt.month
+
+# %%
+
+# %%
 ap.set_index('Month', inplace=True)
+
+# %%
+ap.set_index('date', inplace=True)
 
 # %%
 ap.head()
